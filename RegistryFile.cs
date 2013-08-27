@@ -98,9 +98,9 @@ namespace GroupPolicy.Parser
                     reader.ReadChar();
                     setting.Size = reader.ReadUInt32();
                     reader.ReadChar();
-                    setting.Data = reader.ReadBytes((int)setting.Size);
+                    setting.BinaryData = reader.ReadBytes((int)setting.Size);
                     reader.ReadChar();
-                    setting.FormattedData = GetData(setting);
+                    setting.Data = GetData(setting);
 
                     settings.Add(setting);
                 }
@@ -137,16 +137,16 @@ namespace GroupPolicy.Parser
             {
                 case RegistryValueType.REG_SZ:
                 case RegistryValueType.REG_EXPAND_SZ:
-                    return Encoding.Unicode.GetString(instruction.Data).TrimEnd('\0');
+                    return Encoding.Unicode.GetString(instruction.BinaryData).TrimEnd('\0');
                 case RegistryValueType.REG_DWORD:
-                    return BitConverter.ToUInt32(instruction.Data, 0);
+                    return BitConverter.ToUInt32(instruction.BinaryData, 0);
                 case RegistryValueType.REG_QWORD:
-                    return BitConverter.ToUInt64(instruction.Data, 0);
+                    return BitConverter.ToUInt64(instruction.BinaryData, 0);
                 case RegistryValueType.REG_MULTI_SZ:
-                    if (instruction.Data.Length == 0) return new string[0];
+                    if (instruction.BinaryData.Length == 0) return new string[0];
 
                     var collection = new List<string>();
-                    using (var stream = new MemoryStream(instruction.Data))
+                    using (var stream = new MemoryStream(instruction.BinaryData))
                     using (var reader = new BinaryReader(stream, Encoding.Unicode))
                     {
                         var length = reader.BaseStream.Length;
@@ -159,7 +159,7 @@ namespace GroupPolicy.Parser
                         return collection.ToArray();
                     }
                 default:
-                    return instruction.Data;
+                    return instruction.BinaryData;
             }
         }
 
@@ -169,15 +169,15 @@ namespace GroupPolicy.Parser
             {
                 case RegistryValueType.REG_SZ:
                 case RegistryValueType.REG_EXPAND_SZ:
-                    return Encoding.Unicode.GetBytes((string)instruction.FormattedData + '\0');
+                    return Encoding.Unicode.GetBytes((string)instruction.Data + '\0');
                 case RegistryValueType.REG_DWORD:
-                    return BitConverter.GetBytes((uint)instruction.FormattedData);
+                    return BitConverter.GetBytes((uint)instruction.Data);
                 case RegistryValueType.REG_QWORD:
-                    return BitConverter.GetBytes((ulong)instruction.FormattedData);
+                    return BitConverter.GetBytes((ulong)instruction.Data);
                 case RegistryValueType.REG_MULTI_SZ:
-                    return Encoding.Unicode.GetBytes(string.Join("\0", (string[])instruction.FormattedData) + "\0\0");
+                    return Encoding.Unicode.GetBytes(string.Join("\0", (string[])instruction.Data) + "\0\0");
                 default:
-                    return (byte[])instruction.FormattedData;
+                    return (byte[])instruction.Data;
             }
         }
     }    

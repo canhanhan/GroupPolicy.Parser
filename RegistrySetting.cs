@@ -22,9 +22,9 @@ namespace GroupPolicy.Parser
         public uint Size { get; set; }
 
         [DispId(4)]
-        public byte[] Data { get; set; }
+        public byte[] BinaryData { get; set; }
 
         [DispId(5)]
-        public object FormattedData { get; set; }
+        public object Data { get; set; }
     }
 }
