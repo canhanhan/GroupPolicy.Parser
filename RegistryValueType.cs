@@ -1,8 +1,6 @@
-﻿using System.Runtime.InteropServices;
-
-namespace GroupPolicy.Parser
+﻿namespace GroupPolicy.Parser
 {
-    public enum RegistryValueType
+    public enum RegistryValueType : uint
     {
         REG_NONE = 0,
         REG_SZ                 = 1,       /* string type (ASCII) */
@@ -12,7 +10,9 @@ namespace GroupPolicy.Parser
         REG_DWORD_BIG_ENDIAN   = 5,       /* DWORD in big endian format  */
         REG_LINK               = 6,       /* symbolic link (UNICODE) */
         REG_MULTI_SZ           = 7,       /* multiple strings, delimited by \0, terminated by \0\0 (ASCII) */
+        REG_RESOURCE_LIST      = 8,
+        REG_FULL_RESOURCE_DESCRIPTOR = 9,
+        REG_RESOURCE_REQUIREMENTS_LIST = 10,
         REG_QWORD              = 11 
-
     }
 }

@@ -2,32 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Runtime.InteropServices;
-
 
 namespace GroupPolicy.Parser
 {
-    [Guid("39887E5B-301C-4802-88E3-682F06AE7C4D")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIDispatch)]
-    public interface IRegistryFile
-    {
-        [DispId(1)]
-        int Count { get; }
-
-        [DispId(2)]
-        RegistrySetting Item(int index);
-
-        [DispId(3)]
-        void Open(string path);
-
-        [DispId(4)]
-        void Save();
-    }
-
-    [Guid("086630A6-FEF8-43E2-A226-9C3FBACBAD7F")]
-    [ClassInterface(ClassInterfaceType.None)]
-    [ComDefaultInterface(typeof(IRegistryFile))]
-    public class RegistryFile : IRegistryFile
+    public class RegistryFile
     {
         private const uint SIGNATURE = 0x67655250;
         private static Array ValueTypes = Enum.GetValues(typeof(RegistryValueType));
@@ -37,37 +15,40 @@ namespace GroupPolicy.Parser
         public uint Version { get; set; }
 
         public RegistrySetting[] Settings { get; private set; }
+        public byte[] Data
+        {
+            get
+            {   
+                using (var stream = new MemoryStream()) 
+                using (var writer = new BinaryWriter(stream, Encoding.Unicode))
+                {
+                    writer.Write(this.Signature);
+                    writer.Write(this.Version);
 
-        public int Count { get { return this.Settings.Length; } }
+                    foreach (var instruction in this.Settings)
+                    {
+                        writer.Write('[');
+                        writer.Write(Encoding.Unicode.GetBytes(instruction.KeyPath + '\0'));
+                        writer.Write(';');
+                        writer.Write(Encoding.Unicode.GetBytes(instruction.Value + '\0'));
+                        writer.Write(';');
+                        writer.Write((uint)instruction.Type);
+                        writer.Write(';');
+                        var data = SetData(instruction);
+                        writer.Write(data.Length);
+                        writer.Write(';');
+                        writer.Write(data);
+                        writer.Write(']');
+                    }
+
+                    return stream.ToArray();
+                }
+            }
+        }
 
         public RegistryFile()
         {
             this.Settings = new RegistrySetting[0];
-        }
-
-        public void Save()
-        {
-            using (var file = File.OpenWrite(this.Path))
-            using (var writer = new BinaryWriter(file, Encoding.Unicode)) 
-            {
-                writer.Write(this.Signature);
-                writer.Write(this.Version);
-                foreach(var instruction in this.Settings) 
-                {
-                    writer.Write('[');
-                    writer.Write(Encoding.Unicode.GetBytes(instruction.KeyPath + '\0'));
-                    writer.Write(';');
-                    writer.Write(Encoding.Unicode.GetBytes(instruction.Value + '\0'));
-                    writer.Write(';');
-                    writer.Write((uint)instruction.Type);
-                    writer.Write(';');
-                    var data = SetData(instruction);
-                    writer.Write(data.Length);
-                    writer.Write(';');
-                    writer.Write(data);
-                    writer.Write(']');
-                }
-            }
         }
 
         public void Open(string path)
@@ -94,7 +75,7 @@ namespace GroupPolicy.Parser
                     reader.ReadChar();
                     setting.Value = ReadString(reader);
                     reader.ReadChar();
-                    setting.Type = reader.ReadUInt32();
+                    setting.Type = (RegistryValueType)reader.ReadUInt32();
                     reader.ReadChar();
                     setting.Size = reader.ReadUInt32();
                     reader.ReadChar();
@@ -109,14 +90,9 @@ namespace GroupPolicy.Parser
             this.Settings = settings.ToArray();
         }
 
-        public RegistrySetting Item(int index)
+        public void Save()
         {
-            return this.Settings[index];
-        }
-
-        private static RegistryValueType GetType(uint type)
-        {
-            return Enum.IsDefined(typeof(RegistryValueType), (int)type) ? (RegistryValueType)type : RegistryValueType.REG_NONE;
+            File.WriteAllBytes(this.Path, this.Data);
         }
 
         private static string ReadString(BinaryReader reader)
@@ -133,7 +109,7 @@ namespace GroupPolicy.Parser
 
         private static object GetData(RegistrySetting instruction)
         {
-            switch (GetType(instruction.Type))
+            switch (instruction.Type)
             {
                 case RegistryValueType.REG_SZ:
                 case RegistryValueType.REG_EXPAND_SZ:
@@ -165,7 +141,7 @@ namespace GroupPolicy.Parser
 
         private static byte[] SetData(RegistrySetting instruction)
         {
-            switch (GetType(instruction.Type))
+            switch (instruction.Type)
             {
                 case RegistryValueType.REG_SZ:
                 case RegistryValueType.REG_EXPAND_SZ:
